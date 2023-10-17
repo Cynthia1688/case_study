@@ -1,0 +1,228 @@
+---
+title: "case_study"
+author: "Yangyang Chen"
+date: "`r Sys.Date()`"
+output: github_document
+---
+```{r}
+library(tidyverse)
+library(ggridges)
+library(leaflet)
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
+## Get the data
+```{r}
+library(p8105.datasets)
+
+data(nyc_airbnb)
+
+nyc_airbnb = 
+  nyc_airbnb |> 
+  rename(borough = neighbourhood_group) |> 
+  mutate(stars = review_scores_location / 2)
+```
+
+## Do some EDA
+
+```{r}
+nyc_airbnb |> 
+  count(borough)
+```
+
+```{r}
+nyc_airbnb |> 
+  group_by(borough, room_type) |> 
+  summarize(mean_price = mean(price)) |> 
+  pivot_wider(
+    names_from = room_type,
+    values_from = mean_price
+  )
+```
+
+```{r}
+nyc_airbnb |> 
+  group_by(borough, room_type) |> 
+  summarize(median_price = median(price)) |> 
+  pivot_wider(
+    names_from = room_type, 
+    values_from = median_price
+  )
+```
+
+```{r}
+nyc_airbnb |> 
+  ggplot(aes(x = price)) + 
+  geom_histogram() + 
+  facet_grid(borough ~ room_type)
+```
+
+```{r}
+nyc_airbnb |> 
+  filter(price >= 9500)
+```
+
+```{r}
+nyc_airbnb |> 
+  filter(price < 1000, room_type == "Entire home/apt") |> 
+  ggplot(aes(x = price)) + 
+  geom_histogram() + 
+  facet_grid(. ~ borough)
+```
+
+```{r}
+nyc_airbnb |> 
+  filter(
+    price < 1000, 
+    room_type == "Entire home/apt", 
+    borough == "Manhattan") |> 
+  group_by(neighbourhood) |> 
+  summarize(
+    n_apt = n(),
+    mean_price = mean(price)) |> 
+  arrange((mean_price))
+```
+
+```{r}
+nyc_airbnb |> 
+  filter(
+    price < 1000, 
+    room_type == "Entire home/apt", 
+    borough == "Manhattan") |> 
+  mutate(neighbourhood = fct_reorder(neighbourhood, price)) |> 
+  ggplot(aes(x = price, y = neighbourhood)) + 
+  geom_density_ridges()
+```
+
+```{r}
+nyc_airbnb |> 
+  filter(
+    price < 1000, 
+    room_type == "Entire home/apt", 
+    borough == "Manhattan") |> 
+  ggplot(aes(x = lat, y = long, color = price)) + 
+  geom_point()
+```
+
+```{r}
+nyc_airbnb |> 
+  filter(
+    price < 1000, 
+    room_type == "Entire home.apt",
+    borough == "Manhattan") |> 
+  mutate(neighbourhood = fct_reorder(neighbourhood, price)) |> 
+  ggplot(aes(x = lat, y = long, color = price)) +
+  geom_point()
+```
+
+```{r}
+nyc_airbnb |>  
+  filter(
+    price < 1000, 
+    room_type == "Entire home/apt", 
+    borough == "Manhattan") |> 
+  sample_n(500) |> 
+  leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  addCircleMarkers(~lat, ~long, radius = .5)
+```
+
+Load library:
+```{r}
+library(httr)
+library(rvest)
+```
+Import NSNUE data:
+```{r}
+nsduh_url = "http://samhda.s3-us-gov-west-1.amazonaws.com/s3fs-public/field-uploads/2k15StateFiles/NSDUHsaeShortTermCHG2015.htm"
+
+nsduh_html = 
+  read_html(nsduh_url)
+```
+
+```{r}
+marj_use_df = 
+  nsduh_html |> 
+  html_table() |> 
+  first() |> 
+  slice(-1)
+```
+
+Import star wars ...
+
+```{r}
+swm_url = 
+  "https://www.imdb.com/list/ls070150896/"
+
+swm_html = 
+  read_html(swm_url)
+```
+
+```{r}
+title_vec = 
+  swm_html |>
+  html_elements(".lister-item-header a") |>
+  html_text()
+
+gross_rev_vec = 
+  swm_html |>
+  html_elements(".text-small:nth-child(7) span:nth-child(5)") |>
+  html_text()
+
+runtime_vec = 
+  swm_html |>
+  html_elements(".runtime") |>
+  html_text()
+
+swm_df = 
+  tibble(
+    title = title_vec,
+    rev = gross_rev_vec,
+    runtime = runtime_vec)
+```
+
+## API
+
+```{r}
+nyc_water_df = 
+  GET("https://data.cityofnewyork.us/resource/ia2d-e54m.csv") |> 
+content("parsed")
+```
+
+BRFSSData
+```{r}
+brfss_df = 
+  GET("https://chronicdata.cdc.gov/resource/acme-vg9e.csv",
+      query = list("$limit" == 5000)) |> 
+  content()
+```
+
+## Poke
+
+```{r}
+poke_df = 
+  GET("https://pokeapi.co/api/v2/pokemon/ditto") |> 
+  content()
+```
+
+
+
+
+
